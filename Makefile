@@ -6,7 +6,7 @@ CFLAGS =-g -std=gnu99 -O1 -Wall
 CXXFLAGS = -g -std=gnu++11 -O1 -Wall
 LDFLAGS = -lrt -lpthread
 
-SOURCES = main.c mzapo_phys.c mzapo_parlcd.c
+SOURCES = julia.c mzapo_phys.c mzapo_parlcd.c
 #SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = light_control
 TARGET_IP ?= 192.168.1.37
