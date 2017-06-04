@@ -24,6 +24,7 @@ void drawJuliaSet(double c1, double c2, int maxIter) {
         double cX = c1;
         double cY = c2;
         double x, y;
+
         for (int pixelX = 0; pixelX < width; pixelX++) {
             for (int pixelY = 0; pixelY < height; pixelY++) {
                  
@@ -39,34 +40,33 @@ void drawJuliaSet(double c1, double c2, int maxIter) {
                     }
                     else break;
                 }
- 
+// CHANGE ME  
         unsigned int c;
         int r,g,b;
+
         if(i < 100){
             r = i%31;
             g = i%17;
             b = i%7;
-        }
-        else if(i < 150){
+        } else if(i < 150) {
             r = i%7;
             g = i%17;
             b = i%31;
-        }
-        else if(i < 250){
+        } else if(i < 250) {
             r = i%7;
             g = i%31;
             b = i%17;
-        }
-        else{
+        } else {
             r = i%31;
             g = i%31;
             b = i%31;
-             
         }
          
          
         c = (r << 11) | (g << 5) | b;   
         pixels[pixelX][pixelY]=c;
+
+// END OF CHANGE ME
  
             }
         }
@@ -115,6 +115,7 @@ void setConst(){
         oldR = rgb_knobs_value>>16 & 255;
         oldG = rgb_knobs_value>>8 & 255;
         oldB = rgb_knobs_value & 255;
+        // CHANGE_ME 
         while (1) {
             struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200000000};
             rgb_knobs_value = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
@@ -195,5 +196,6 @@ void setConst(){
             }
             clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
         }
+        // END OF CHANGE_ME
         return 0;
     }
