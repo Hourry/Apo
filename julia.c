@@ -121,6 +121,7 @@ static void *render_worker(void *data)
                 gen_julia(c_data[c_idx][0], c_data[c_idx][1], ITER);
                 show_fb();
                 c_idx = ++c_idx % 5;
+                sleep(1);
             }
         } else {
             if (c1 != lastC1 && c2 != lastC2) {
