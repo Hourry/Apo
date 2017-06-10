@@ -232,18 +232,22 @@ int main(int argc, char *argv[])
             old_g = knob_val >> 8 & 255;
             lc2 = (lc2 > -1) ? lc2 - 0.02 : 1;
         } else if ((knob_val >> 24 & 1) == 1) {
-	    fputs("go_shop\n", stdout);
+	        fputs("go_shop\n", stdout);
             d_shop = (go_shop(thread_init)) ? 0 : 1;
         } else {
             if (lc1 != c1 || lc2 != c2) {
                 if (pthread_mutex_trylock(&thread_init->work_mtx) != 0) {
                     fputs("still rendering, deffering\n", stderr);
                 } else {
-		    fputs("trying to render\n", stderr);
+		            fputs("trying to render\n", stderr);
                     c1 = lc1;
                     c2 = lc2;
-                    pthread_cond_signal(&thread_init->work_rdy);
-                    pthread_mutex_unlock(&thread_init->work_mtx);
+                    if (pthread_cond_signal(&thread_init->work_rdy) != 0) {
+                        pthread_mutex_unlock(&thread_init->work_mtx);
+                        sleep(1);
+                    } else {
+                        pthread_mutex_unlock(&thread_init->work_mtx);
+                    }
                 }
             }
         }
