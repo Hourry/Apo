@@ -110,20 +110,25 @@ static void *render_worker(void *data)
 {
     struct t_init *init_data = (struct t_init *) data;
     int c_idx = 0;
+    fputs("thread init\n", stdout);
 
     pthread_mutex_lock(&init_data->work_mtx);
+    fputs("mutex locked\n", stderr);
 
     while (!exit_cond) {
         pthread_cond_wait(&init_data->work_rdy, &init_data->work_mtx);
+	fputs("cond unlocked\n", stderr);
 
         if (shopmod) {
             while(shopmod) {
+		fputs("shopmod thread\n", stderr);
                 gen_julia(c_data[c_idx][0], c_data[c_idx][1], 0, 0, ITER);
                 show_fb();
                 c_idx = ++c_idx % 5;
                 sleep(1);
             }
         } else {
+	    fputs("render thread\n", stderr);
             gen_julia(c1, c2, 0, 0, ITER);
             show_fb();
         }
@@ -197,6 +202,8 @@ int main(int argc, char *argv[])
         fputs("failed to create thread", stderr);
         return 1;
     }
+    sleep(2);
+
 
     knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
     old_r = knob_val >> 16 & 255;
@@ -206,6 +213,7 @@ int main(int argc, char *argv[])
     while (1) {
         knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
         if (d_shop) {
+	    fputs("d_shop\n", stdout);
             d_shop = (go_shop(thread_init)) ? 0 : 1;
         } else if ((knob_val >> 16 & 255) > old_r) {
             fputs("c1 inc\n", stderr);
@@ -224,12 +232,14 @@ int main(int argc, char *argv[])
             old_g = knob_val >> 8 & 255;
             lc2 = (lc2 > -1) ? lc2 - 0.02 : 1;
         } else if ((knob_val >> 24 & 1) == 1) {
+	    fputs("go_shop\n", stdout);
             d_shop = (go_shop(thread_init)) ? 0 : 1;
         } else {
             if (lc1 != c1 || lc2 != c2) {
                 if (pthread_mutex_trylock(&thread_init->work_mtx) != 0) {
-                    fputs("still rendering, deffering", stderr);
+                    fputs("still rendering, deffering\n", stderr);
                 } else {
+		    fputs("trying to render\n", stderr);
                     c1 = lc1;
                     c2 = lc2;
                     pthread_cond_signal(&thread_init->work_rdy);
