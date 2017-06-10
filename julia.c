@@ -109,8 +109,6 @@ void c_data_init()
 static void *render_worker(void *data)
 {
     struct t_init *init_data = (struct t_init *) data;
-    double lastC1 = 0;
-    double lastC2 = 0;
     int c_idx = 0;
 
     pthread_mutex_lock(&init_data->work_mtx);
@@ -126,12 +124,8 @@ static void *render_worker(void *data)
                 sleep(1);
             }
         } else {
-            if (c1 != lastC1 && c2 != lastC2) {
-                lastC1 = c1;
-                lastC2 = c2;
-                gen_julia(lastC1, lastC2, 0, 0, ITER);
-                show_fb();
-            }
+            gen_julia(c1, c2, 0, 0, ITER);
+            show_fb();
         }
     }
 
@@ -210,35 +204,37 @@ int main(int argc, char *argv[])
     old_b = knob_val  & 255;
 
     while (1) {
+        knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
         if (d_shop) {
             d_shop = (go_shop(thread_init)) ? 0 : 1;
         } else if ((knob_val >> 16 & 255) > old_r) {
-            fputs("c1 inc", stderr);
+            fputs("c1 inc\n", stderr);
             old_r = knob_val >> 16 & 255;
             lc1 = (lc1 < 1) ? lc1 + 0.02 : -1;
         } else if ((knob_val >> 16 & 255) < old_r) {
-            fputs("c1 dec", stderr);
+            fputs("c1 dec\n", stderr);
             old_r = knob_val >> 16 & 255;
             lc1 = (lc1 > -1) ? lc1 - 0.02 : 1;
         } if ((knob_val >> 8 & 255) > old_g) {
-            fputs("c2 inc", stderr);
+            fputs("c2 inc\n", stderr);
             old_g = knob_val >> 8 & 255;
             lc2 = (lc2 < 1) ? lc2 + 0.02 : -1;
         } else if ((knob_val >> 8 & 255) < old_g) {
-            fputs("c2 dec", stderr);
+            fputs("c2 dec\n", stderr);
             old_g = knob_val >> 8 & 255;
             lc2 = (lc2 > -1) ? lc2 - 0.02 : 1;
         } else if ((knob_val >> 24 & 1) == 1) {
             d_shop = (go_shop(thread_init)) ? 0 : 1;
         } else {
-            if (pthread_mutex_trylock(&thread_init->work_mtx) != 0) {
-                fputs("still rendering, deffering", stderr);
-            } else {
-                c1 = lc1;
-                c2 = lc2;
-                shopmod = 0;
-                pthread_cond_signal(&thread_init->work_rdy);
-                pthread_mutex_unlock(&thread_init->work_mtx);
+            if (lc1 != c1 || lc2 != c2) {
+                if (pthread_mutex_trylock(&thread_init->work_mtx) != 0) {
+                    fputs("still rendering, deffering", stderr);
+                } else {
+                    c1 = lc1;
+                    c2 = lc2;
+                    pthread_cond_signal(&thread_init->work_rdy);
+                    pthread_mutex_unlock(&thread_init->work_mtx);
+                }
             }
         }
         clock_nanosleep(CLOCK_MONOTONIC, 0, &delay, NULL);
