@@ -44,7 +44,7 @@ void show_fb();
 int go_shop(struct t_init *data);
 
 
-void gen_julia(double cX, double cY, int iter_count)
+void gen_julia(double cX, double cY, int oX, int oY,  int iter_count)
 {
     uint16_t color;
     double x, y;
@@ -144,6 +144,15 @@ void show_fb()
         }
     }
 }
+
+void *udp_listen(void *data)
+{
+    char buf[100];
+    int sock = *((int *)data);
+
+    recvfrom(sock, &buf, 100 * sizeof(char), 0, NULL, NULL);
+
+}
  
 int main(int argc, char *argv[])
 {
@@ -157,6 +166,8 @@ int main(int argc, char *argv[])
     pthread_t tinfo;
     int d_shop = 0;
     struct timespec delay = {.tv_sec = 0, .tv_nsec = 200000000};
+    struct sockaddr_in addr;
+    int sock;
 
     if ((lcd_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0)) == NULL) return 1;
     if ((mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0)) == NULL) return 1;
@@ -165,6 +176,21 @@ int main(int argc, char *argv[])
 
     if ((thread_init = malloc(sizeof(struct t_init))) == NULL) {
         fputs("failed to initialize thread data", stderr);
+        return 1;
+    }
+
+    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        fputs("failed to init udp socket", stderr);
+        return 1;
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(44444);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if ((bind(sock, (struct sockaddr *) &addr, sizeof(addr))) != 0) {
+        fputs("failed to bind the udp socket to port 44 444", stderr);
         return 1;
     }
 
