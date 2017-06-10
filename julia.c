@@ -12,6 +12,8 @@
 #include <string.h>
 #include <math.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <errno.h>
 
 #define WIDTH 480
@@ -37,7 +39,7 @@ struct t_init {
     pthread_mutex_t work_mtx;
 };
  
-void gen_julia(double, double, int);
+void gen_julia(double, double, int, int, int);
 void c_data_init();
 static void *render_worker(void *);
 void show_fb();
@@ -118,7 +120,7 @@ static void *render_worker(void *data)
 
         if (shopmod) {
             while(shopmod) {
-                gen_julia(c_data[c_idx][0], c_data[c_idx][1], ITER);
+                gen_julia(c_data[c_idx][0], c_data[c_idx][1], 0, 0, ITER);
                 show_fb();
                 c_idx = ++c_idx % 5;
                 sleep(1);
@@ -127,7 +129,7 @@ static void *render_worker(void *data)
             if (c1 != lastC1 && c2 != lastC2) {
                 lastC1 = c1;
                 lastC2 = c2;
-                gen_julia(lastC1, lastC2, ITER);
+                gen_julia(lastC1, lastC2, 0, 0, ITER);
                 show_fb();
             }
         }
