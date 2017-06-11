@@ -145,6 +145,7 @@ static void *render_worker(void *thread_data)
             }
         } else if (infomod) {
             show_fb();
+            infomod = 0;
         } else {
 	        fputs("render thread\n", stderr);
             gen_julia(c1, c2, 0, 0, ITER);
@@ -321,7 +322,6 @@ int main(int argc, char *argv[])
 		            fputs("trying to render\n", stdout);
                     c1 = lc1;
                     c2 = lc2;
-                    infomod = 0;
                     if (pthread_cond_signal(&tdata.work_rdy) != 0) {
                         pthread_mutex_unlock(&tdata.work_mtx);
                     } else {
