@@ -18,12 +18,15 @@
 
 #define WIDTH 480
 #define HEIGHT 320
+#define CL_BLACK 0x0000
+#define CL_WHITE 0x1111
 
 //const int WIDTH = 480;
 //const int HEIGHT = 320;
 const int ITER = 300;
 const double I_C1 = -0.0835;
 const double I_C2 = -0.2321;
+font_descriptor_t font;
  
 uint16_t fb[HEIGHT][WIDTH];
 double c_data[6][2];
@@ -51,6 +54,10 @@ static void *render_worker(void *);
 void show_fb();
 int go_shop(struct rt_data *data);
 static void *udp_worker(void *);
+void show_info();
+void display_str(char *, int , int , uint16_t);
+void display_char(char , int , int , uint16_t);
+void draw_rect(int , int , int , int , uint16_t);
 
 
 void gen_julia(double cX, double cY, int oX, int oY,  int iter_count)
@@ -165,9 +172,58 @@ void *udp_worker(void *tdata)
         recvfrom(sock, &buf, 100 * sizeof(char), 0, NULL, NULL);
 
         if (sscanf(buf, "<%d> <%d> <%d>", &x, &y, &c) == 3) {
-            fputs("received data", stderr);
+            fputs("received data\n", stderr);
         } else {
-            fputs("wrong udp data", stderr);
+            fputs("wrong udp data\n", stderr);
+        }
+    }
+}
+
+void show_info()
+{
+    char line1[WIDTH+1];
+    char line2[HEIGHT+1];
+
+    snprintf(line1, WIDTH+1, "C1: %6.6f", c1);
+    snprintf(line2, WIDTH+1, "C2: %6.6f", c2);
+
+    draw_rect(200, 0, 240, WIDTH, CL_WHITE);
+
+    display_str(line1, 200, 10, CL_BLACK);
+    display_str(line2, 220, 10, CL_BLACK);
+    
+}
+
+void display_str(char *str, int y0, int x0, uint16_t color)
+{
+    int str_len = strlen(str);
+    int x = x0;
+
+    for (int i = 0; i < str_len; i++) {
+        display_char(str[i], y0, x, color);
+        x += font.maxwidth;
+    }
+}
+
+void display_char(char ch, int y0, int x0, uint16_t color)
+{
+    const font_bits_t *curr_char = font.bits + ((ch - font.firstchar) * font.height);
+    font_bits_t curr_line;
+
+    for (int y = y0; y < (y0 + font.height); y++) {
+        curr_line = *(curr_char + y);
+        for (int x = (x0 + font.maxwidth-1); x >= x0; x--) {
+            fb[y][x] = (curr_line & 0x1) ? color : fb[y][x];
+            curr_line >>= 1;
+        }
+    }
+}
+
+void draw_rect(int y0, int x0, int y1, int x1, uint16_t color)
+{
+    for (int y = y0; y < y1; y++) {
+        for (int x = x0; x < x1; x++) {
+            fb[y][x] = color;
         }
     }
 }
@@ -182,6 +238,7 @@ int main(int argc, char *argv[])
     volatile uint32_t knob_val;
     int d_shop = 0;
     int sock;
+    font = font_winFreeSystem14x16;
 
     pthread_t rtinfo, utinfo;
     struct rt_data tdata = { .work_mtx = PTHREAD_MUTEX_INITIALIZER, .work_rdy = PTHREAD_COND_INITIALIZER };
