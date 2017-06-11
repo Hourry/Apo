@@ -44,6 +44,7 @@ void c_data_init();
 static void *render_worker(void *);
 void show_fb();
 int go_shop(struct t_init *data);
+static void *udp_worker(void *);
 
 
 void gen_julia(double cX, double cY, int oX, int oY,  int iter_count)
@@ -147,7 +148,7 @@ void show_fb()
     }
 }
 
-void *udp_listen(void *data)
+void *udp_worker(void *data)
 {
     char buf[100];
     int sock = *((int *)data);
@@ -175,7 +176,7 @@ int main(int argc, char *argv[])
     int d_shop = 0;
     int sock;
 
-    pthread_t tinfo;
+    pthread_t rtinfo, utinfo;
     struct t_init tdata = { .work_mtx = PTHREAD_MUTEX_INITIALIZER, .work_rdy = PTHREAD_COND_INITIALIZER };
     struct sockaddr_in addr;
     struct timespec delay = {.tv_sec = 0, .tv_nsec = 200000000};
@@ -201,8 +202,12 @@ int main(int argc, char *argv[])
     }
 
     // thread init
-    if (pthread_create(&tinfo, 0, &render_worker, &tdata) != 0) {
-        fputs("failed to create thread", stderr);
+    if (pthread_create(&rtinfo, 0, &render_worker, &tdata) != 0) {
+        fputs("failed to create render thread", stderr);
+        return 1;
+    }
+    if (pthread_create(&utinfo, 0, &udp_worker, &tdata) != 0) {
+        fputs("failed to create udp thread", stderr);
         return 1;
     }
     sleep(2);
@@ -247,7 +252,6 @@ int main(int argc, char *argv[])
                     c2 = lc2;
                     if (pthread_cond_signal(&tdata.work_rdy) != 0) {
                         pthread_mutex_unlock(&tdata.work_mtx);
-                        sleep(1);
                     } else {
                         pthread_mutex_unlock(&tdata.work_mtx);
                     }
