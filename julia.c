@@ -188,13 +188,16 @@ void show_info()
     char line1[WIDTH+1];
     char line2[HEIGHT+1];
 
-    snprintf(line1, WIDTH+1, "C1: %6.6f", c1);
-    snprintf(line2, WIDTH+1, "C2: %6.6f", c2);
+    
+    //snprintf(line1, WIDTH+1, "C1: %6.6f", c1);
+    //snprintf(line2, WIDTH+1, "C2: %6.6f", c2);
 
     draw_rect(200, 0, 240, WIDTH, CL_WHITE);
 
-    display_str(line1, 200, 10, CL_BLACK);
-    display_str(line2, 220, 10, CL_BLACK);
+    //display_str(line1, 200, 10, CL_BLACK);
+    //display_str(line2, 220, 10, CL_BLACK);
+    display_char('0', 200, 0, CL_BLACK);
+    display_char('8', 220, 0, CL_BLACK);
 }
 
 void display_str(char *str, int y0, int x0, uint16_t color)
@@ -204,7 +207,7 @@ void display_str(char *str, int y0, int x0, uint16_t color)
 
     for (int i = 0; i < str_len; i++) {
         display_char(str[i], y0, x, color);
-        x += font.maxwidth;
+        x += 16;
     }
 }
 
@@ -215,9 +218,9 @@ void display_char(char ch, int y0, int x0, uint16_t color)
 
     for (int y = y0; y < (y0 + font.height); y++) {
         curr_line = *(curr_char + (y-y0));
-        for (int x = (x0 + font.maxwidth-1); x >= x0; x--) {
-            fb[y][x] = (curr_line & 0x1) ? color : fb[y][x];
-            curr_line >>= 1;
+        for (int x = x0; x < (x0 + 16); x++) {
+            fb[y][x] = (curr_line & 0x8000) ? color : fb[y][x];
+            curr_line <<= 1;
         }
     }
 }

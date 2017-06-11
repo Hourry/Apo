@@ -8,7 +8,7 @@ LDFLAGS = -lrt -lpthread
 
 SOURCES = julia.c mzapo_phys.c mzapo_parlcd.c
 SOURCES += font_prop14x16.c font_rom8x16.c
-TARGET_EXE = light_control
+TARGET_EXE = julia
 TARGET_IP ?= 192.168.1.37
 TARGET_DIR ?= /tmp/$(shell whoami)
 TARGET_USER ?= root
