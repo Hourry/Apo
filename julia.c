@@ -35,7 +35,8 @@ unsigned char *lcd_base;
 
 double c1;
 double c2;
-int shopmod;
+int shopmod = 0;
+int infomod = 0;
 
 struct rt_data {
     pthread_cond_t work_rdy;
@@ -142,6 +143,8 @@ static void *render_worker(void *thread_data)
                 c_idx = c_idx % 5;
                 sleep(1);
             }
+        } else if (infomod) {
+            show_fb();
         } else {
 	        fputs("render thread\n", stderr);
             gen_julia(c1, c2, 0, 0, ITER);
@@ -191,7 +194,6 @@ void show_info()
 
     display_str(line1, 200, 10, CL_BLACK);
     display_str(line2, 220, 10, CL_BLACK);
-    
 }
 
 void display_str(char *str, int y0, int x0, uint16_t color)
@@ -308,14 +310,18 @@ int main(int argc, char *argv[])
         } else if ((knob_val >> 24 & 1) == 1) {
 	        fputs("go_shop\n", stdout);
             d_shop = (go_shop(&tdata)) ? 0 : 1;
+        } else if ((knob_val >> 25 & 1) == 1) {
+            show_info();
+            infomod = 1;
         } else {
-            if (lc1 != c1 || lc2 != c2) {
+            if (lc1 != c1 || lc2 != c2 || infomod) {
                 if (pthread_mutex_trylock(&tdata.work_mtx) != 0) {
                     fputs("still rendering, deffering\n", stderr);
                 } else {
 		            fputs("trying to render\n", stdout);
                     c1 = lc1;
                     c2 = lc2;
+                    infomod = 0;
                     if (pthread_cond_signal(&tdata.work_rdy) != 0) {
                         pthread_mutex_unlock(&tdata.work_mtx);
                     } else {
