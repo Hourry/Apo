@@ -106,35 +106,36 @@ void c_data_init()
     c_data[5][1] = -0.3842;
 }
  
-static void *render_worker(void *data)
+static void *render_worker(void *thread_data)
 {
-    struct t_init *init_data = (struct t_init *) data;
+    struct t_init *data = (struct t_init *) thread_data;
     int c_idx = 0;
     fputs("thread init\n", stdout);
 
-    pthread_mutex_lock(&init_data->work_mtx);
+    pthread_mutex_lock(&data->work_mtx);
     fputs("mutex locked\n", stderr);
 
     while (!exit_cond) {
-        pthread_cond_wait(&init_data->work_rdy, &init_data->work_mtx);
-	fputs("cond unlocked\n", stderr);
+        pthread_cond_wait(&data->work_rdy, &data->work_mtx);
+	    fputs("cond unlocked\n", stderr);
 
         if (shopmod) {
             while(shopmod) {
-		fputs("shopmod thread\n", stderr);
+		        fputs("shopmod thread\n", stderr);
                 gen_julia(c_data[c_idx][0], c_data[c_idx][1], 0, 0, ITER);
                 show_fb();
-                c_idx = ++c_idx % 5;
+                c_idx = c_idx + 1;
+                c_idx = c_idx % 5;
                 sleep(1);
             }
         } else {
-	    fputs("render thread\n", stderr);
+	        fputs("render thread\n", stderr);
             gen_julia(c1, c2, 0, 0, ITER);
             show_fb();
         }
     }
 
-    pthread_mutex_unlock(&init_data->work_mtx);
+    pthread_mutex_unlock(&data->work_mtx);
 }
 
 void show_fb()
@@ -150,9 +151,17 @@ void *udp_listen(void *data)
 {
     char buf[100];
     int sock = *((int *)data);
+    int x, y, c;
 
-    recvfrom(sock, &buf, 100 * sizeof(char), 0, NULL, NULL);
+    while (!exit_cond) {
+        recvfrom(sock, &buf, 100 * sizeof(char), 0, NULL, NULL);
 
+        if (sscanf(buf, "<%d> <%d> <%d>", &x, &y, &c) == 3) {
+
+        } else {
+            fputs("wrong udp data", stderr);
+        }
+    }
 }
  
 int main(int argc, char *argv[])
@@ -163,22 +172,18 @@ int main(int argc, char *argv[])
     double lc1 = I_C1;
     double lc2 = I_C2;
     volatile uint32_t knob_val;
-    struct t_init *thread_init;
-    pthread_t tinfo;
     int d_shop = 0;
-    struct timespec delay = {.tv_sec = 0, .tv_nsec = 200000000};
-    struct sockaddr_in addr;
     int sock;
+
+    pthread_t tinfo;
+    struct t_init tdata = { .work_mtx = PTHREAD_MUTEX_INITIALIZER, .work_rdy = PTHREAD_COND_INITIALIZER };
+    struct sockaddr_in addr;
+    struct timespec delay = {.tv_sec = 0, .tv_nsec = 200000000};
 
     if ((lcd_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0)) == NULL) return 1;
     if ((mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0)) == NULL) return 1;
     parlcd_hx8357_init(lcd_base);
     parlcd_write_cmd(lcd_base, 0x2c);
-
-    if ((thread_init = malloc(sizeof(struct t_init))) == NULL) {
-        fputs("failed to initialize thread data", stderr);
-        return 1;
-    }
 
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         fputs("failed to init udp socket", stderr);
@@ -196,9 +201,7 @@ int main(int argc, char *argv[])
     }
 
     // thread init
-    pthread_cond_init(&thread_init->work_rdy, NULL);
-    pthread_mutex_init(&thread_init->work_mtx, NULL);
-    if (pthread_create(&tinfo, 0, &render_worker, &thread_init) != 0) {
+    if (pthread_create(&tinfo, 0, &render_worker, &tdata) != 0) {
         fputs("failed to create thread", stderr);
         return 1;
     }
@@ -214,7 +217,7 @@ int main(int argc, char *argv[])
         knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
         if (d_shop) {
 	    fputs("d_shop\n", stdout);
-            d_shop = (go_shop(thread_init)) ? 0 : 1;
+            d_shop = (go_shop(&tdata)) ? 0 : 1;
         } else if ((knob_val >> 16 & 255) > old_r) {
             fputs("c1 inc\n", stderr);
             old_r = knob_val >> 16 & 255;
@@ -233,20 +236,20 @@ int main(int argc, char *argv[])
             lc2 = (lc2 > -1) ? lc2 - 0.02 : 1;
         } else if ((knob_val >> 24 & 1) == 1) {
 	        fputs("go_shop\n", stdout);
-            d_shop = (go_shop(thread_init)) ? 0 : 1;
+            d_shop = (go_shop(&tdata)) ? 0 : 1;
         } else {
             if (lc1 != c1 || lc2 != c2) {
-                if (pthread_mutex_trylock(&thread_init->work_mtx) != 0) {
+                if (pthread_mutex_trylock(&tdata.work_mtx) != 0) {
                     fputs("still rendering, deffering\n", stderr);
                 } else {
-		            fputs("trying to render\n", stderr);
+		            fputs("trying to render\n", stdout);
                     c1 = lc1;
                     c2 = lc2;
-                    if (pthread_cond_signal(&thread_init->work_rdy) != 0) {
-                        pthread_mutex_unlock(&thread_init->work_mtx);
+                    if (pthread_cond_signal(&tdata.work_rdy) != 0) {
+                        pthread_mutex_unlock(&tdata.work_mtx);
                         sleep(1);
                     } else {
-                        pthread_mutex_unlock(&thread_init->work_mtx);
+                        pthread_mutex_unlock(&tdata.work_mtx);
                     }
                 }
             }
