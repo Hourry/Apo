@@ -34,16 +34,22 @@ double c1;
 double c2;
 int shopmod;
 
-struct t_init {
+struct rt_data {
     pthread_cond_t work_rdy;
     pthread_mutex_t work_mtx;
+};
+
+struct ut_data {
+    pthread_cond_t *work_rdy;
+    pthread_mutex_t *work_mtx;
+    int sock;
 };
  
 void gen_julia(double, double, int, int, int);
 void c_data_init();
 static void *render_worker(void *);
 void show_fb();
-int go_shop(struct t_init *data);
+int go_shop(struct rt_data *data);
 static void *udp_worker(void *);
 
 
@@ -109,7 +115,7 @@ void c_data_init()
  
 static void *render_worker(void *thread_data)
 {
-    struct t_init *data = (struct t_init *) thread_data;
+    struct rt_data *data = (struct rt_data *) thread_data;
     int c_idx = 0;
     fputs("thread init\n", stdout);
 
@@ -148,17 +154,18 @@ void show_fb()
     }
 }
 
-void *udp_worker(void *data)
+void *udp_worker(void *tdata)
 {
+    struct ut_data *data = (struct ut_data *) tdata;
     char buf[100];
-    int sock = *((int *)data);
+    int sock = data->sock;
     int x, y, c;
 
     while (!exit_cond) {
         recvfrom(sock, &buf, 100 * sizeof(char), 0, NULL, NULL);
 
         if (sscanf(buf, "<%d> <%d> <%d>", &x, &y, &c) == 3) {
-
+            fputs("received data", stderr);
         } else {
             fputs("wrong udp data", stderr);
         }
@@ -177,7 +184,8 @@ int main(int argc, char *argv[])
     int sock;
 
     pthread_t rtinfo, utinfo;
-    struct t_init tdata = { .work_mtx = PTHREAD_MUTEX_INITIALIZER, .work_rdy = PTHREAD_COND_INITIALIZER };
+    struct rt_data tdata = { .work_mtx = PTHREAD_MUTEX_INITIALIZER, .work_rdy = PTHREAD_COND_INITIALIZER };
+    struct ut_data utdata = { .work_mtx = &tdata.work_mtx, .work_rdy = &tdata.work_rdy };
     struct sockaddr_in addr;
     struct timespec delay = {.tv_sec = 0, .tv_nsec = 200000000};
 
@@ -200,13 +208,14 @@ int main(int argc, char *argv[])
         fputs("failed to bind the udp socket to port 44 444", stderr);
         return 1;
     }
+    utdata.sock = sock;
 
     // thread init
     if (pthread_create(&rtinfo, 0, &render_worker, &tdata) != 0) {
         fputs("failed to create render thread", stderr);
         return 1;
     }
-    if (pthread_create(&utinfo, 0, &udp_worker, &tdata) != 0) {
+    if (pthread_create(&utinfo, 0, &udp_worker, &utdata) != 0) {
         fputs("failed to create udp thread", stderr);
         return 1;
     }
@@ -263,7 +272,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-int go_shop(struct t_init *thread)
+int go_shop(struct rt_data *thread)
 {
     if (shopmod) {
         shopmod = 0;
