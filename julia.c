@@ -19,7 +19,7 @@
 #define WIDTH 480
 #define HEIGHT 320
 #define CL_BLACK 0x0000
-#define CL_WHITE 0x1111
+#define CL_WHITE 0xFFFF
 
 //const int WIDTH = 480;
 //const int HEIGHT = 320;
@@ -214,7 +214,7 @@ void display_char(char ch, int y0, int x0, uint16_t color)
     font_bits_t curr_line;
 
     for (int y = y0; y < (y0 + font.height); y++) {
-        curr_line = *(curr_char + y);
+        curr_line = *(curr_char + (y-y0));
         for (int x = (x0 + font.maxwidth-1); x >= x0; x--) {
             fb[y][x] = (curr_line & 0x1) ? color : fb[y][x];
             curr_line >>= 1;
