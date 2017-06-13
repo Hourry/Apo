@@ -37,7 +37,7 @@ double c1;
 double c2;
 int shopmod = 0;
 int infomod = 0;
-int udp_chage = 0;
+int udp_change = 0;
 
 struct rt_data {
     pthread_cond_t work_rdy;
@@ -176,14 +176,14 @@ void *udp_worker(void *tdata)
     while (!exit_cond) {
         recvfrom(sock, &buf, 100 * sizeof(char), 0, NULL, NULL);
 
-        if (sscanf(buf, "<%f> <%f> ", &lc1, &lc2) == 3) {
+        if (sscanf(buf, "<%lf> <%lf> ", &lc1, &lc2) == 2) {
             fputs("received data\n", stderr);
-            pthread_mutex_lock(&data->work_mtx);
+            pthread_mutex_lock(data->work_mtx);
             fputs("udp worker mutex locked", stderr);
             c1 = lc1;
             c2 = lc2;
             udp_change = 1;
-            pthread_mutex_unlock(&data->work_mtx);
+            pthread_mutex_unlock(data->work_mtx);
         } else {
             fputs("wrong udp data\n", stderr);
         }
@@ -196,15 +196,15 @@ void show_info()
     char line2[HEIGHT+1];
 
     
-    //snprintf(line1, WIDTH+1, "C1: %6.6f", c1);
-    //snprintf(line2, WIDTH+1, "C2: %6.6f", c2);
+    snprintf(line1, WIDTH+1, "C1: %6.6f", c1);
+    snprintf(line2, WIDTH+1, "C2: %6.6f", c2);
 
     draw_rect(200, 0, 240, WIDTH, CL_WHITE);
 
-    //display_str(line1, 200, 10, CL_BLACK);
-    //display_str(line2, 220, 10, CL_BLACK);
-    display_char('0', 200, 0, CL_BLACK);
-    display_char('8', 220, 0, CL_BLACK);
+    display_str(line1, 200, 10, CL_BLACK);
+    display_str(line2, 220, 10, CL_BLACK);
+    //display_char('0', 200, 0, CL_BLACK);
+    //display_char('8', 220, 0, CL_BLACK);
 }
 
 void display_str(char *str, int y0, int x0, uint16_t color)
