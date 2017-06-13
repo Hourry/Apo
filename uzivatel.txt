@@ -1,0 +1,9 @@
+Otacanim cerveneho, resp. zeleneho volica sa meni hodnota konstant c1, resp. c2, a to takto:
+- otocenim volica vpravo sa prida k hodnote +0.02
+- otocenim volica vlavo sa odcita od konstanty hodnota -0.02
+
+Stlacenim modreho volica sa zapne "vystavny" mod, t.j. na displeji sa zacnu periodicky zobrazovat zaujimave julia sety.
+
+Stlacenim zeleneho volica sa na displeji vypisu hodnoty oboch konstant.
+
+Zaslanim spravy v tvare "<c1> <c2>" na UDP port 44444 sa daju vzdialene menit hodnoty danych konstant.

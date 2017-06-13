@@ -37,6 +37,7 @@ double c1;
 double c2;
 int shopmod = 0;
 int infomod = 0;
+int udp_chage = 0;
 
 struct rt_data {
     pthread_cond_t work_rdy;
@@ -170,13 +171,19 @@ void *udp_worker(void *tdata)
     struct ut_data *data = (struct ut_data *) tdata;
     char buf[100];
     int sock = data->sock;
-    int x, y, c;
+    double lc1, lc2;
 
     while (!exit_cond) {
         recvfrom(sock, &buf, 100 * sizeof(char), 0, NULL, NULL);
 
-        if (sscanf(buf, "<%d> <%d> <%d>", &x, &y, &c) == 3) {
+        if (sscanf(buf, "<%f> <%f> ", &lc1, &lc2) == 3) {
             fputs("received data\n", stderr);
+            pthread_mutex_lock(&data->work_mtx);
+            fputs("udp worker mutex locked", stderr);
+            c1 = lc1;
+            c2 = lc2;
+            udp_change = 1;
+            pthread_mutex_unlock(&data->work_mtx);
         } else {
             fputs("wrong udp data\n", stderr);
         }
@@ -292,8 +299,14 @@ int main(int argc, char *argv[])
 
     while (1) {
         knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
-        if (d_shop) {
-	    fputs("d_shop\n", stdout);
+        if (udp_change) {
+            pthread_mutex_lock(&tdata.work_mtx);
+            lc1 = c1;
+            lc2 = c2;
+            udp_change = 0;
+            pthread_mutex_unlock(&tdata.work_mtx);
+        } else if (d_shop) {
+	        fputs("d_shop\n", stdout);
             d_shop = (go_shop(&tdata)) ? 0 : 1;
         } else if ((knob_val >> 16 & 255) > old_r) {
             fputs("c1 inc\n", stderr);
