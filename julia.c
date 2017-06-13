@@ -155,6 +155,8 @@ static void *render_worker(void *thread_data)
     }
 
     pthread_mutex_unlock(&data->work_mtx);
+
+    return NULL;
 }
 
 void show_fb()
@@ -188,6 +190,8 @@ void *udp_worker(void *tdata)
             fputs("wrong udp data\n", stderr);
         }
     }
+
+    return NULL;
 }
 
 void show_info()
