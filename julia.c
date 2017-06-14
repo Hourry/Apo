@@ -24,8 +24,8 @@
 //const int WIDTH = 480;
 //const int HEIGHT = 320;
 const int ITER = 300;
-const double I_C1 = -0.0835;
-const double I_C2 = -0.2321;
+const double I_C1 = -0.0305;
+const double I_C2 = -0.0811;
 font_descriptor_t font;
  
 uint16_t fb[HEIGHT][WIDTH];
@@ -39,6 +39,10 @@ int menu = 0;
 int shopmod = 0;
 int infomod = 0;
 int udp_change = 0;
+
+int mod1 = 31;
+int mod2 = 17;
+int mod3 = 7;
 
 struct rt_data {
     pthread_cond_t work_rdy;
@@ -58,7 +62,7 @@ void show_fb();
 int go_shop(struct rt_data *data);
 static void *udp_worker(void *);
 void show_info();
-void show_menu();
+
 void display_str(char *, int , int , uint16_t);
 void display_char(char , int , int , uint16_t);
 void draw_rect(int , int , int , int , uint16_t);
@@ -84,29 +88,31 @@ void gen_julia(double cX, double cY, int oX, int oY,  int iter_count)
             }
 
             if(i < 100) {
-                r = i%31;
-                g = i%17;
-                b = i%7;
+                r = i%mod1;
+                g = i%mod2;
+                b = i%mod3;
             } else if(i < 150) {
-                r = i%7;
-                g = i%17;
-                b = i%31;
+                r = i%mod3;
+                g = i%mod2;
+                b = i%mod1;
             } else if(i < 250) {
-                r = i%7;
-                g = i%31;
-                b = i%17;
+                r = i%mod3;
+                g = i%mod1;
+                b = i%mod2;
             } else {
-                r = i%31;
-                g = i%31;
-                b = i%31;
+                r = i%mod1;
+                g = i%mod1;
+                b = i%mod1;
             }
              
              
-            color = (r << 11) | (g << 5) | b;   
+            color = (r << 1) | (g << 20) | b;   
             fb[pixelY][pixelX] = color;
         }
     }
 }
+
+
  
 void c_data_init()
 {
@@ -248,14 +254,16 @@ void draw_rect(int y0, int x0, int y1, int x1, uint16_t color)
     }
 }
 
-void show_menu(unsigned char* mem_base,struct timespec *delay){
-    
+void show_menu(unsigned char* mem_base,struct timespec *delay, int c1, int c2,struct rt_data * tdata){
+    	
+
+	   double lc1 = I_C1;
+    double lc2 = I_C2;
 	char line1[WIDTH+1];
     	char line2[HEIGHT+1];
 	int in_menu = 1;
 	uint32_t old_r, old_g;
 	volatile uint32_t knob_val;
-
 		
 	knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
     	old_r = knob_val >> 16 & 255;
@@ -286,13 +294,47 @@ void show_menu(unsigned char* mem_base,struct timespec *delay){
             fputs("lowering brightness\n", stderr);
             old_r = knob_val >> 16 & 255;
 
+
            } if ((knob_val >> 8 & 255) > old_g) {
             fputs("changing colour\n", stderr);
             old_g = knob_val >> 8 & 255;
-            
+		mod1 +=1; mod2 +=2, mod3+=3;  
+		if(mod1 > 255 || mod2 > 255|| mod3 > 255 ){
+			mod1 = 31; mod2 = 17; mod3 = 7;
+		} 		
+		if (pthread_mutex_trylock(&tdata->work_mtx) != 0) {
+                    fputs("still rendering, deffering\n", stderr);
+                } else {
+		            fputs("trying to render\n", stdout);
+                    c1 = lc1;z
+                    c2 = lc2;
+                    if (pthread_cond_signal(&tdata->work_rdy) != 0) {
+                        pthread_mutex_unlock(&tdata->work_mtx);
+                    } else {
+                        pthread_mutex_unlock(&tdata->work_mtx);
+                    }
+                }
         } else if ((knob_val >> 8 & 255) < old_g) {
             fputs("changing colour\n", stderr);
             old_g = knob_val >> 8 & 255;
+		mod1 += -1;
+		mod2 += -2;
+		mod3 += -3;
+		if(mod1 < 0 || mod2 < 0 || mod3 < 0){
+			mod1 = 31; mod2 = 17; mod3 = 7;
+		}
+		if (pthread_mutex_trylock(&tdata->work_mtx) != 0) {
+                    fputs("still rendering, deffering\n", stderr);
+                } else {
+		            fputs("trying to render\n", stdout);
+                    c1 = lc1;
+                    c2 = lc2;
+                    if (pthread_cond_signal(&tdata->work_rdy) != 0) {
+                        pthread_mutex_unlock(&tdata->work_mtx);
+                    } else {
+                        pthread_mutex_unlock(&tdata->work_mtx);
+                    }
+	                }
             
 	} else if ((knob_val >> 26 & 1) == 1){
 	 fputs("exiting menu\n",stderr);
@@ -398,7 +440,7 @@ int main(int argc, char *argv[])
             infomod = 1;
 	} else if ((knob_val >> 26 & 1) == 1){
 	  fputs("entering menu\n",stdout);
-	  show_menu(mem_base, &delay);
+	  show_menu(mem_base, &delay,&c1,&c2,&tdata);
 		menu = 1;		
         } else {
             if (lc1 != c1 || lc2 != c2 || infomod) {
