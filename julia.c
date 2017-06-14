@@ -35,6 +35,7 @@ unsigned char *lcd_base;
 
 double c1;
 double c2;
+int menu = 0;
 int shopmod = 0;
 int infomod = 0;
 int udp_change = 0;
@@ -57,6 +58,7 @@ void show_fb();
 int go_shop(struct rt_data *data);
 static void *udp_worker(void *);
 void show_info();
+void show_menu();
 void display_str(char *, int , int , uint16_t);
 void display_char(char , int , int , uint16_t);
 void draw_rect(int , int , int , int , uint16_t);
@@ -230,7 +232,8 @@ void display_char(char ch, int y0, int x0, uint16_t color)
     for (int y = y0; y < (y0 + font.height); y++) {
         curr_line = *(curr_char + (y-y0));
         for (int x = x0; x < (x0 + 16); x++) {
-            fb[y][x] = (curr_line & 0x8000) ? color : fb[y][x];
+     draw_rect(200, 0, 240, WIDTH, CL_WHITE);
+       fb[y][x] = (curr_line & 0x8000) ? color : fb[y][x];
             curr_line <<= 1;
         }
     }
@@ -243,6 +246,65 @@ void draw_rect(int y0, int x0, int y1, int x1, uint16_t color)
             fb[y][x] = color;
         }
     }
+}
+
+void show_menu(unsigned char* mem_base,struct timespec *delay){
+    
+	char line1[WIDTH+1];
+    	char line2[HEIGHT+1];
+	int in_menu = 1;
+	uint32_t old_r, old_g;
+	volatile uint32_t knob_val;
+
+		
+	knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
+    	old_r = knob_val >> 16 & 255;
+   	old_g = knob_val >> 8 & 255;
+
+
+
+    snprintf(line1, WIDTH+1, "Brightness: ");
+    snprintf(line2, WIDTH+1, "Colours:");
+
+    draw_rect(480, 120, 240,360, CL_WHITE);
+
+    display_str(line1, 200, 10, CL_BLACK);
+    display_str(line2, 220, 10, CL_BLACK);
+    //display_char('0', 200, 0, CL_BLACK);
+    //display_char('8', 220, 0, CL_BLACK);
+
+										
+
+    while(in_menu == 1){
+       knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
+       if ((knob_val >> 16 & 255) > old_r) {
+            fputs("increasing brightness\n", stderr);
+            old_r = knob_val >> 16 & 255;
+			
+           }
+	 else if ((knob_val >> 16 & 255) < old_r) {
+            fputs("lowering brightness\n", stderr);
+            old_r = knob_val >> 16 & 255;
+
+           } if ((knob_val >> 8 & 255) > old_g) {
+            fputs("changing colour\n", stderr);
+            old_g = knob_val >> 8 & 255;
+            
+        } else if ((knob_val >> 8 & 255) < old_g) {
+            fputs("changing colour\n", stderr);
+            old_g = knob_val >> 8 & 255;
+            
+	} else if ((knob_val >> 26 & 1) == 1){
+	 fputs("exiting menu\n",stderr);
+		in_menu = 0;		
+        } else {
+		
+        }
+        clock_nanosleep(CLOCK_MONOTONIC, 0, delay,NULL);
+
+    }
+	
+
 }
  
 int main(int argc, char *argv[])
@@ -302,7 +364,7 @@ int main(int argc, char *argv[])
     old_b = knob_val  & 255;
 
     while (1) {
-        knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
+       knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
         if (udp_change) {
             pthread_mutex_lock(&tdata.work_mtx);
             lc1 = c1;
@@ -334,6 +396,10 @@ int main(int argc, char *argv[])
         } else if ((knob_val >> 25 & 1) == 1) {
             show_info();
             infomod = 1;
+	} else if ((knob_val >> 26 & 1) == 1){
+	  fputs("entering menu\n",stdout);
+	  show_menu(mem_base, &delay);
+		menu = 1;		
         } else {
             if (lc1 != c1 || lc2 != c2 || infomod) {
                 if (pthread_mutex_trylock(&tdata.work_mtx) != 0) {
