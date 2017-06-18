@@ -141,11 +141,11 @@ static void *render_worker(void *thread_data)
 
     while (!exit_cond) {
         pthread_cond_wait(&data->work_rdy, &data->work_mtx);
-	    fputs("cond unlocked\n", stderr);
+        fputs("cond unlocked\n", stderr);
 
         if (shopmod) {
             while(shopmod) {
-		        fputs("shopmod thread\n", stderr);
+                fputs("shopmod thread\n", stderr);
                 gen_julia(c_data[c_idx][0], c_data[c_idx][1], 0, 0, ITER);
                 show_fb();
                 c_idx = c_idx + 1;
@@ -156,7 +156,7 @@ static void *render_worker(void *thread_data)
             show_fb();
             infomod = 0;
         } else {
-	        fputs("render thread\n", stderr);
+            fputs("render thread\n", stderr);
             gen_julia(c1, c2, 0, 0, ITER);
             show_fb();
         }
@@ -255,19 +255,19 @@ void draw_rect(int y0, int x0, int y1, int x1, uint16_t color)
 }
 
 void show_menu(unsigned char* mem_base,struct timespec *delay, int c1, int c2,struct rt_data * tdata){
-    	
+        
 
-	   double lc1 = I_C1;
+       double lc1 = I_C1;
     double lc2 = I_C2;
-	char line1[WIDTH+1];
-    	char line2[HEIGHT+1];
-	int in_menu = 1;
-	uint32_t old_r, old_g;
-	volatile uint32_t knob_val;
-		
-	knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
-    	old_r = knob_val >> 16 & 255;
-   	old_g = knob_val >> 8 & 255;
+    char line1[WIDTH+1];
+        char line2[HEIGHT+1];
+    int in_menu = 1;
+    uint32_t old_r, old_g;
+    volatile uint32_t knob_val;
+        
+    knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
+        old_r = knob_val >> 16 & 255;
+    old_g = knob_val >> 8 & 255;
 
 
 
@@ -281,16 +281,15 @@ void show_menu(unsigned char* mem_base,struct timespec *delay, int c1, int c2,st
     //display_char('0', 200, 0, CL_BLACK);
     //display_char('8', 220, 0, CL_BLACK);
 
-										
+                                        
 
     while(in_menu == 1){
        knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
        if ((knob_val >> 16 & 255) > old_r) {
             fputs("increasing brightness\n", stderr);
             old_r = knob_val >> 16 & 255;
-			
            }
-	 else if ((knob_val >> 16 & 255) < old_r) {
+       else if ((knob_val >> 16 & 255) < old_r) {
             fputs("lowering brightness\n", stderr);
             old_r = knob_val >> 16 & 255;
 
@@ -298,14 +297,14 @@ void show_menu(unsigned char* mem_base,struct timespec *delay, int c1, int c2,st
            } if ((knob_val >> 8 & 255) > old_g) {
             fputs("changing colour\n", stderr);
             old_g = knob_val >> 8 & 255;
-		mod1 +=1; mod2 +=2, mod3+=3;  
-		if(mod1 > 255 || mod2 > 255|| mod3 > 255 ){
-			mod1 = 31; mod2 = 17; mod3 = 7;
-		} 		
-		if (pthread_mutex_trylock(&tdata->work_mtx) != 0) {
+        mod1 +=1; mod2 +=2, mod3+=3;  
+        if(mod1 > 255 || mod2 > 255|| mod3 > 255 ){
+            mod1 = 31; mod2 = 17; mod3 = 7;
+        }       
+        if (pthread_mutex_trylock(&tdata->work_mtx) != 0) {
                     fputs("still rendering, deffering\n", stderr);
                 } else {
-		            fputs("trying to render\n", stdout);
+                    fputs("trying to render\n", stdout);
                     c1 = lc1;z
                     c2 = lc2;
                     if (pthread_cond_signal(&tdata->work_rdy) != 0) {
@@ -317,16 +316,16 @@ void show_menu(unsigned char* mem_base,struct timespec *delay, int c1, int c2,st
         } else if ((knob_val >> 8 & 255) < old_g) {
             fputs("changing colour\n", stderr);
             old_g = knob_val >> 8 & 255;
-		mod1 += -1;
-		mod2 += -2;
-		mod3 += -3;
-		if(mod1 < 0 || mod2 < 0 || mod3 < 0){
-			mod1 = 31; mod2 = 17; mod3 = 7;
-		}
-		if (pthread_mutex_trylock(&tdata->work_mtx) != 0) {
+        mod1 += -1;
+        mod2 += -2;
+        mod3 += -3;
+        if(mod1 < 0 || mod2 < 0 || mod3 < 0){
+            mod1 = 31; mod2 = 17; mod3 = 7;
+        }
+        if (pthread_mutex_trylock(&tdata->work_mtx) != 0) {
                     fputs("still rendering, deffering\n", stderr);
                 } else {
-		            fputs("trying to render\n", stdout);
+                    fputs("trying to render\n", stdout);
                     c1 = lc1;
                     c2 = lc2;
                     if (pthread_cond_signal(&tdata->work_rdy) != 0) {
@@ -334,18 +333,18 @@ void show_menu(unsigned char* mem_base,struct timespec *delay, int c1, int c2,st
                     } else {
                         pthread_mutex_unlock(&tdata->work_mtx);
                     }
-	                }
+                    }
             
-	} else if ((knob_val >> 26 & 1) == 1){
-	 fputs("exiting menu\n",stderr);
-		in_menu = 0;		
+    } else if ((knob_val >> 26 & 1) == 1){
+     fputs("exiting menu\n",stderr);
+        in_menu = 0;        
         } else {
-		
+        
         }
         clock_nanosleep(CLOCK_MONOTONIC, 0, delay,NULL);
 
     }
-	
+    
 
 }
  
@@ -408,13 +407,17 @@ int main(int argc, char *argv[])
     while (1) {
        knob_val = *(volatile uint32_t*)(mem_base+SPILED_REG_KNOBS_8BIT_o);
         if (udp_change) {
+            puts("udp message received, locking mutex\n");
             pthread_mutex_lock(&tdata.work_mtx);
             lc1 = c1;
             lc2 = c2;
             udp_change = 0;
+            if (pthread_cond_signal(&tdata.work_mtx) != 0) {
+                puts("render thread signalled\n");
+            } else fputs("failed to signal render thread\n", stderr);
             pthread_mutex_unlock(&tdata.work_mtx);
         } else if (d_shop) {
-	        fputs("d_shop\n", stdout);
+            fputs("d_shop\n", stdout);
             d_shop = (go_shop(&tdata)) ? 0 : 1;
         } else if ((knob_val >> 16 & 255) > old_r) {
             fputs("c1 inc\n", stderr);
@@ -433,28 +436,27 @@ int main(int argc, char *argv[])
             old_g = knob_val >> 8 & 255;
             lc2 = (lc2 > -1) ? lc2 - 0.02 : 1;
         } else if ((knob_val >> 24 & 1) == 1) {
-	        fputs("go_shop\n", stdout);
+            fputs("go_shop\n", stdout);
             d_shop = (go_shop(&tdata)) ? 0 : 1;
         } else if ((knob_val >> 25 & 1) == 1) {
             show_info();
             infomod = 1;
-	} else if ((knob_val >> 26 & 1) == 1){
-	  fputs("entering menu\n",stdout);
-	  show_menu(mem_base, &delay,&c1,&c2,&tdata);
-		menu = 1;		
+    } else if ((knob_val >> 26 & 1) == 1){
+        fputs("entering menu\n",stdout);
+        show_menu(mem_base, &delay,&c1,&c2,&tdata);
+        menu = 1;       
         } else {
             if (lc1 != c1 || lc2 != c2 || infomod) {
                 if (pthread_mutex_trylock(&tdata.work_mtx) != 0) {
                     fputs("still rendering, deffering\n", stderr);
                 } else {
-		            fputs("trying to render\n", stdout);
+                    fputs("trying to render\n", stdout);
                     c1 = lc1;
                     c2 = lc2;
                     if (pthread_cond_signal(&tdata.work_rdy) != 0) {
-                        pthread_mutex_unlock(&tdata.work_mtx);
-                    } else {
-                        pthread_mutex_unlock(&tdata.work_mtx);
-                    }
+                        puts("render thread signalled\n");
+                    } else fputs("failed to signal render thread\n", stderr);
+                    pthread_mutex_unlock(&tdata.work_mtx);
                 }
             }
         }
