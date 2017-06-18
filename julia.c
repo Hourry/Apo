@@ -134,14 +134,14 @@ static void *render_worker(void *thread_data)
 {
     struct rt_data *data = (struct rt_data *) thread_data;
     int c_idx = 0;
-    fputs("thread init\n", stdout);
+    //fputs("thread init\n", stdout);
 
     pthread_mutex_lock(&data->work_mtx);
-    fputs("mutex locked\n", stderr);
+    //fputs("mutex locked\n", stderr);
 
     while (!exit_cond) {
         pthread_cond_wait(&data->work_rdy, &data->work_mtx);
-        fputs("cond unlocked\n", stderr);
+        //fputs("cond unlocked\n", stderr);
 
         if (shopmod) {
             while(shopmod) {
@@ -305,7 +305,7 @@ void show_menu(unsigned char* mem_base,struct timespec *delay, int c1, int c2,st
                     fputs("still rendering, deffering\n", stderr);
                 } else {
                     fputs("trying to render\n", stdout);
-                    c1 = lc1;z
+                    c1 = lc1;
                     c2 = lc2;
                     if (pthread_cond_signal(&tdata->work_rdy) != 0) {
                         pthread_mutex_unlock(&tdata->work_mtx);
@@ -412,27 +412,27 @@ int main(int argc, char *argv[])
             lc1 = c1;
             lc2 = c2;
             udp_change = 0;
-            if (pthread_cond_signal(&tdata.work_mtx) != 0) {
-                puts("render thread signalled\n");
-            } else fputs("failed to signal render thread\n", stderr);
+            if (pthread_cond_signal(&tdata.work_rdy) != 0) {
+                fputs("udp failed to signal render thread\n", stderr);
+            } else puts("udp signalled render thread");
             pthread_mutex_unlock(&tdata.work_mtx);
         } else if (d_shop) {
             fputs("d_shop\n", stdout);
             d_shop = (go_shop(&tdata)) ? 0 : 1;
         } else if ((knob_val >> 16 & 255) > old_r) {
-            fputs("c1 inc\n", stderr);
+            //fputs("c1 inc\n", stderr);
             old_r = knob_val >> 16 & 255;
             lc1 = (lc1 < 1) ? lc1 + 0.02 : -1;
         } else if ((knob_val >> 16 & 255) < old_r) {
-            fputs("c1 dec\n", stderr);
+            //fputs("c1 dec\n", stderr);
             old_r = knob_val >> 16 & 255;
             lc1 = (lc1 > -1) ? lc1 - 0.02 : 1;
         } if ((knob_val >> 8 & 255) > old_g) {
-            fputs("c2 inc\n", stderr);
+            //fputs("c2 inc\n", stderr);
             old_g = knob_val >> 8 & 255;
             lc2 = (lc2 < 1) ? lc2 + 0.02 : -1;
         } else if ((knob_val >> 8 & 255) < old_g) {
-            fputs("c2 dec\n", stderr);
+            //fputs("c2 dec\n", stderr);
             old_g = knob_val >> 8 & 255;
             lc2 = (lc2 > -1) ? lc2 - 0.02 : 1;
         } else if ((knob_val >> 24 & 1) == 1) {
@@ -445,22 +445,22 @@ int main(int argc, char *argv[])
         fputs("entering menu\n",stdout);
         show_menu(mem_base, &delay,&c1,&c2,&tdata);
         menu = 1;       
-        } else {
-            if (lc1 != c1 || lc2 != c2 || infomod) {
-                if (pthread_mutex_trylock(&tdata.work_mtx) != 0) {
-                    fputs("still rendering, deffering\n", stderr);
-                } else {
-                    fputs("trying to render\n", stdout);
-                    c1 = lc1;
-                    c2 = lc2;
-                    if (pthread_cond_signal(&tdata.work_rdy) != 0) {
-                        puts("render thread signalled\n");
-                    } else fputs("failed to signal render thread\n", stderr);
-                    pthread_mutex_unlock(&tdata.work_mtx);
-                }
+    } else {
+        if (lc1 != c1 || lc2 != c2 || infomod) {
+            if (pthread_mutex_trylock(&tdata.work_mtx) != 0) {
+                fputs("still rendering, deffering\n", stderr);
+            } else {
+                fputs("trying to render\n", stdout);
+                c1 = lc1;
+                c2 = lc2;
+                if (pthread_cond_signal(&tdata.work_rdy) != 0) {
+                    fputs("failed to signal render thread\n", stderr);
+                } else puts("render thread signalled");
+                pthread_mutex_unlock(&tdata.work_mtx);
             }
         }
-        clock_nanosleep(CLOCK_MONOTONIC, 0, &delay, NULL);
+    }
+    clock_nanosleep(CLOCK_MONOTONIC, 0, &delay, NULL);
     }
     return 0;
 }
